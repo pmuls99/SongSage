@@ -2,6 +2,7 @@ package internalspotify
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -11,13 +12,15 @@ import (
 	"os"
 
 	"github.com/joho/godotenv"
-	model "github.com/pmuls99/likeSongs/model/spotify"
+	"github.com/zmb3/spotify/v2"
+	spotifyauth "github.com/zmb3/spotify/v2/auth"
+	"golang.org/x/oauth2"
 )
 
-func GetSpotifyBearerToken() (*model.AuthTokenResponse, error) {
+func GetSpotifyBearerToken() (*spotify.Client, error) {
 	godotenv.Load("local.env")
-	clientId := os.Getenv("CLIENT_ID")
-	clientSecret := os.Getenv("CLIENT_SECRET")
+	clientId := os.Getenv("SPOTIFY_ID")
+	clientSecret := os.Getenv("SPOTIFY_SECRET")
 	contentType := "application/x-www-form-urlencoded"
 	form := url.Values{}
 	form.Add("grant_type", "client_credentials")
@@ -44,7 +47,7 @@ func GetSpotifyBearerToken() (*model.AuthTokenResponse, error) {
 		return nil, err
 	}
 	// converting byte body to struct
-	var authRespBody model.AuthTokenResponse
+	var authRespBody oauth2.Token
 	// change the error name here
 	eror := json.Unmarshal(respBody, &authRespBody)
 	if eror != nil {
@@ -52,5 +55,16 @@ func GetSpotifyBearerToken() (*model.AuthTokenResponse, error) {
 		return nil, eror
 	}
 
-	return &authRespBody, nil
+	authenticator := spotifyauth.New()
+	ctx := context.Background()
+
+	// var oauthTokenBody oauth2.Token
+	// json.NewDecoder(respBody).Decode(&oauthTokenBody)
+
+	httpClient := authenticator.Client(ctx, &authRespBody)
+
+	spotifyClient := spotify.New(httpClient)
+
+	return spotifyClient, nil
+	// return &authRespBody, nil
 }
